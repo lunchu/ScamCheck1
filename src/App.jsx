@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Shield, FileText, Image, Link, AlertTriangle } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Shield, FileText, Image, Link, AlertTriangle, Key, X } from 'lucide-react'
 import TextCheck from './components/TextCheck'
 import ImageCheck from './components/ImageCheck'
 import URLCheck from './components/URLCheck'
@@ -16,6 +16,16 @@ function App() {
   const [result, setResult] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [userApiKey, setUserApiKey] = useState('')
+  const [showApiKeyInput, setShowApiKeyInput] = useState(false)
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedKey = localStorage.getItem('gemini_api_key')
+    if (savedKey) {
+      setUserApiKey(savedKey)
+    }
+  }, [])
 
   const handleResult = (data) => {
     setResult(data)
@@ -32,8 +42,21 @@ function App() {
     setError(null)
   }
 
+  const handleSaveApiKey = () => {
+    if (userApiKey.trim()) {
+      localStorage.setItem('gemini_api_key', userApiKey.trim())
+      setShowApiKeyInput(false)
+    }
+  }
+
+  const handleClearApiKey = () => {
+    localStorage.removeItem('gemini_api_key')
+    setUserApiKey('')
+  }
+
+  // Use env variable first, then user-provided key
   const apiConfig = {
-    apiKey: import.meta.env.VITE_GEMINI_API_KEY,
+    apiKey: import.meta.env.VITE_GEMINI_API_KEY || userApiKey,
     baseUrl: import.meta.env.VITE_GEMINI_BASE_URL
   }
   const isConfigured = !!apiConfig.apiKey
@@ -43,30 +66,89 @@ function App() {
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-xl">
-              <Shield className="w-8 h-8 text-blue-600" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-xl">
+                <Shield className="w-8 h-8 text-blue-600" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Scam Check</h1>
+                <p className="text-sm text-gray-500">AI-powered scam detection</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Scam Check</h1>
-              <p className="text-sm text-gray-500">AI-powered scam detection</p>
-            </div>
+            {isConfigured && (
+              <button
+                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                title="API Key Settings"
+              >
+                <Key className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* API Config Warning */}
-        {!isConfigured && (
-          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-medium text-amber-800">API Key Required</p>
-              <p className="text-sm text-amber-700 mt-1">
-                Add your Gemini API key to the <code className="bg-amber-100 px-1 rounded">.env</code> file:
-                <br />
-                <code className="bg-amber-100 px-1 rounded text-xs block mt-1">VITE_GEMINI_API_KEY=your_key</code>
-              </p>
+        {/* API Key Input */}
+        {(!isConfigured || showApiKeyInput) && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-amber-800">
+                    {isConfigured ? 'API Key Settings' : 'API Key Required'}
+                  </p>
+                  {showApiKeyInput && isConfigured && (
+                    <button
+                      onClick={() => setShowApiKeyInput(false)}
+                      className="text-amber-600 hover:text-amber-800"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-sm text-amber-700 mt-1 mb-3">
+                  Enter your Gemini API key to use the scam checker.
+                  Get one free at{' '}
+                  <a
+                    href="https://aistudio.google.com/app/apikey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-amber-900"
+                  >
+                    Google AI Studio
+                  </a>
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={userApiKey}
+                    onChange={(e) => setUserApiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="flex-1 px-3 py-2 border border-amber-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  <button
+                    onClick={handleSaveApiKey}
+                    disabled={!userApiKey.trim()}
+                    className="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Save
+                  </button>
+                  {isConfigured && (
+                    <button
+                      onClick={handleClearApiKey}
+                      className="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-amber-600 mt-2">
+                  Your key is stored locally in your browser only.
+                </p>
+              </div>
             </div>
           </div>
         )}
